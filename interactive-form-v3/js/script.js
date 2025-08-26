@@ -17,6 +17,12 @@ inputName.focus();
 //Make sure other job role field is hidden
 otherJobRole.style.display = "none";
 
+paymentMethods.children[1].selected = true; // Set credit card as default on page load
+paypalSection.style.display = "none";
+bitcoinSection.style.display = "none";
+
+colorSelect.disabled = true;
+
 //if other is selected, display text field and move focus
 jobRole.addEventListener("change", (e) => {
     if (e.target.value === "other") {
@@ -28,21 +34,19 @@ jobRole.addEventListener("change", (e) => {
     }   
 });
 
-colorSelect.disabled = true;
-
 designSelect.addEventListener("change", (e) => {
     colorSelect.disabled = false;
     const selectedDesign = e.target.value;
     const colors = colorSelect.children;
 
+    //hide colors that don't match theme
     for (let i = 0; i < colors.length; i++) {
-        if (colors[i].getAttribute("data-theme") === selectedDesign) {
+        if (colors[i].dataset.theme === selectedDesign) {
             colors[i].hidden = false;
         } else {
             colors[i].hidden = true;
         }
     }
-
     // Reset the color selection to the first available option
     colorSelect.selectedIndex = 0;
 });
@@ -63,13 +67,15 @@ registerForActivities.addEventListener("change", (e) => {
     totalCostField.textContent = `Total: $${totalCost}`;
 });
 
-paymentMethods.children[1].selected = true; // Set credit card as default
-paypalSection.style.display = "none";
-bitcoinSection.style.display = "none";
-
 //Adjust display based on payment method selected
 paymentMethods.addEventListener("change", (e) => toggleDisplay(e.target.value));
 
+/*
+Helper function - handles most inputs, checks for regex and hints
+Activities are handled separately
+Flow is RegEx Fail => RegEx Pass => Empty String => Valid
+Returns isValid
+*/
 function inputValidator(input, hint = '', regex = null) {
     //default to true, set to false if any checks fail
     let isValid = true;
@@ -81,8 +87,7 @@ function inputValidator(input, hint = '', regex = null) {
         
         if (hint) {
             input.nextElementSibling.style.display = "block"; // Show error message
-        }
-                
+        }              
         return isValid;
 
     } else if (regex && regex.test(input.value)) {
@@ -93,7 +98,6 @@ function inputValidator(input, hint = '', regex = null) {
             input.nextElementSibling.style.display = "none"; // Hide error message
         }
     } else if (input.value.trim() === "")  {
-
         isValid = false;
         parent.classList.remove("valid");
         parent.classList.add("not-valid");
@@ -101,7 +105,7 @@ function inputValidator(input, hint = '', regex = null) {
         if (hint) {
             input.nextElementSibling.style.display = "block"; // Show hint
         }
-    return isValid;
+        return isValid;
     } else {
         isValid = true;
         parent.classList.remove("not-valid");
@@ -113,59 +117,60 @@ function inputValidator(input, hint = '', regex = null) {
     return isValid;
 }
 
+//helper function to easily toggle payment methods
+//Decided to try using an object here since I read ahead a bit :-)
 function toggleDisplay(paymentType) {
-    const sections = {
+    const method = {
         "credit-card": document.getElementById("credit-card"),
         "paypal": document.getElementById("paypal"),
         "bitcoin": document.getElementById("bitcoin")
     };
     if (paymentType === "credit-card") {
-        sections["credit-card"].style.display = "block";
-        sections["paypal"].style.display = "none";
-        sections["bitcoin"].style.display = "none";
+        method["credit-card"].style.display = "block";
+        method["paypal"].style.display = "none";
+        method["bitcoin"].style.display = "none";
     } else if (paymentType === "paypal") {
-        sections["credit-card"].style.display = "none";
-        sections["paypal"].style.display = "block";
-        sections["bitcoin"].style.display = "none";
+        method["credit-card"].style.display = "none";
+        method["paypal"].style.display = "block";
+        method["bitcoin"].style.display = "none";
     } else if (paymentType === "bitcoin") {
-        sections["credit-card"].style.display = "none";
-        sections["paypal"].style.display = "none";
-        sections["bitcoin"].style.display = "block";
+        method["credit-card"].style.display = "none";
+        method["paypal"].style.display = "none";
+        method["bitcoin"].style.display = "block";
     }
 }
 
 form.addEventListener("submit", (e) => {
+    //Initialize to true, then run through a series of validation checks using helper function
     let isValid = true;
 
-    // Validate name
     isValid = inputValidator(inputName,true);
     isValid = inputValidator(inputEmail,true,/^[^@]+@[^@]+\.[a-zA-Z]{2,}$/);
 
     const selectedPaymentMethod = paymentMethods.value;
+    //Another object to group them a bit
+    const ccField = {
+        "ccNum": document.getElementById("cc-num"),
+        "zip": document.getElementById("zip"),
+        "cvv": document.getElementById("cvv")
+    }
     if (selectedPaymentMethod === "credit-card") {
-        const ccNum = document.getElementById("cc-num");
-        const zip = document.getElementById("zip");
-        const cvv = document.getElementById("cvv");
-        
-        isValid = inputValidator(ccNum, true, /^\d{13,16}$/);
-        isValid = inputValidator(zip, true, /^\d{5}$/);
-        isValid = inputValidator(cvv, true, /^\d{3}$/);
+        isValid = inputValidator(ccField["ccNum"], true, /^\d{13,16}$/);
+        isValid = inputValidator(ccField["zip"], true, /^\d{5}$/);
+        isValid = inputValidator(ccField["cvv"], true, /^\d{3}$/);
     }
 
-    // Validate activities
-    
+    // Validate activities - make sure at least one is selected
     let atLeastOneIsChecked = false;
-    
     for (let i = 0; i < activitiesCheckboxes.length; i++) {
         if (activitiesCheckboxes[i].checked) {
             atLeastOneIsChecked = true;
             break;  
         }
     }
-
+    //Update classes based on if one is selected
     if (!atLeastOneIsChecked) {
         isValid = false;
-        console.log(activitiesCheckboxes[0].parent);
         registerForActivities.classList.remove("valid");
         registerForActivities.classList.add("not-valid");
         document.getElementById("activities-hint").style.display = "block"; // Show error message
@@ -177,6 +182,7 @@ form.addEventListener("submit", (e) => {
         document.getElementById("activities-hint").style.display = "none"; // Hide error message
     }
     
+    //If any validation fails, don't submit and trigger validation visuals
     if (!isValid) {
         e.preventDefault();
     }   
@@ -186,8 +192,7 @@ form.addEventListener("submit", (e) => {
 for (let checkbox of activitiesCheckboxes) {
     checkbox.addEventListener("focus", (e) => {
         e.target.parentElement.classList.add("focus");
-        for (checkbox of activitiesCheckboxes) {
-            
+        for (checkbox of activitiesCheckboxes) {       
             if(e.target.dataset.dayAndTime === checkbox.dataset.dayAndTime && e.target !== checkbox){
                 checkbox.parentElement.classList.add('disabled');
                 checkbox.disabled = true;
@@ -205,20 +210,19 @@ for (let checkbox of activitiesCheckboxes) {
                  checkbox.parentElement.classList.remove('disabled');
                  checkbox.disabled = false;
              }
-
          }
     });
 
-    //#2 and 3 of "exceeds requirements"       
+    //#2 and 3 of "exceeds requirements - selected 3 as the number of chars before message changes       
     inputEmail.addEventListener("keyup",(e) => {
         const startMessage = "Please enter an email address";
-        const typingMessage = "Please format your email correctly";
+        const typingMessage = "Please format your email correctly using @ and .";
         const hint = document.getElementById("email-hint");
         hint.innerHTML =startMessage;
         
         isValid = inputValidator(inputEmail,true,/^[^@]+@[^@]+\.[a-zA-Z]{2,}$/);
         if (inputEmail.value.length > 3 && !isValid) {
-            hint.innerHTML = "Please format your email correctly using @ and .";
+            hint.innerHTML = typingMessage;
         } else if (inputEmail.value.length ===0) {
             inputEmail.parentElement.classList.remove("not-valid");
             hint.style.display = "none"; // Hide error message
