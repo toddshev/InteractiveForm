@@ -164,8 +164,7 @@ form.addEventListener("submit", (e) => {
     let atLeastOneIsChecked = false;
     for (let i = 0; i < activitiesCheckboxes.length; i++) {
         if (activitiesCheckboxes[i].checked) {
-            atLeastOneIsChecked = true;
-            break;  
+            atLeastOneIsChecked = true;  
         }
     }
     //Update classes based on if one is selected
@@ -175,8 +174,8 @@ form.addEventListener("submit", (e) => {
         registerForActivities.classList.add("not-valid");
         document.getElementById("activities-hint").style.display = "block"; // Show error message
         }
-     else {
-        isValid = true;
+     else if (atLeastOneIsChecked) {
+    //    isValid = true;
         registerForActivities.classList.remove("not-valid");
         registerForActivities.classList.add("valid");
         document.getElementById("activities-hint").style.display = "none"; // Hide error message
